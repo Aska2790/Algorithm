@@ -1,0 +1,16 @@
+// Cортировка выбором
+
+for (int i = 0; i < element_count; i++){
+
+   int tmp = 0;
+   int min = i;
+   for (int j = i; j < element_count-1; j++){
+      if (copy_array[min] > copy_array[j+1]){
+         min = j+1;
+      }
+   }
+
+   tmp = copy_array[i];
+   copy_array[i] = copy_array[min];
+   copy_array[min] = tmp;
+}

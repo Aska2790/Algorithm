@@ -1,0 +1,11 @@
+// cортировка пузырьком
+    for (int j=0; j<element_count-1; j++)
+    {
+        for(int i=0; i<counter-1; i++) {
+            if(copy_array[i]>copy_array[i+1]){
+                temp=copy_array[i+1];
+                copy_array[i+1]= copy_array[i];
+                copy_array[i]= temp;}
+        }
+        counter--;
+    }
