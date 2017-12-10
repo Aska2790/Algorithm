@@ -1,0 +1,69 @@
+// C# .Net
+//**********************************************************************************
+        /// <summary>
+        /// Рекурсивная версия алгоритма Хоара
+        /// </summary>
+        /// <param name="data">массив для сортировки</param>
+        /// <param name="begin"></param>
+        /// <param name="end"></param>
+        private static int Partition(int[] array, int start, int end)
+        {
+            int marker = start;
+            for (int i = start; i <= end; i++)
+            {
+                if (array[i] <= array[end])
+                {
+                    int temp = array[marker]; // swap
+                    array[marker] = array[i];
+                    array[i] = temp;
+                    marker += 1;
+                }
+            }
+            return marker - 1;
+        }
+
+        /// <summary>
+        /// Алгоритм Хоара
+        /// </summary>
+        /// <param name="array">массив</param>
+        /// <param name="start">мин</param>
+        /// <param name="end">макс</param>
+        private static void HoarAlgorithms(int[] array, int start, int end)
+        {
+            if (start >= end)
+                return;
+            
+            int pivot = Partition(array, start, end);
+            HoarAlgorithms(array, start, pivot - 1);
+            HoarAlgorithms(array, pivot + 1, end);
+        }
+//**********************************************************************************
+
+
+
+//**********************************************************************************
+void quick_sort(int *a, int j)
+{
+    int size = j;           		// сохранение размера массива
+    int c = a[(int)j/2];    		// базовый элемент
+    int k =0;               		// итератор второй половины массивы
+    int temp =0;            		// временный буфер для обмена значений
+        do{
+            while(a[k] < c) k++;  	// пока не найдет элемент большей pivot
+            while(a[j] > c) j--;  	// пока не найдет элемент меньше pivot
+
+            if ( k <= j)
+            {
+                temp = a[k];
+                a[k] = a[j];
+                a[j] = temp;
+                k++;
+                j--;
+            }
+          } while(k<=j);    // пока не сойдут два итератора 
+    if(j>0)
+        quick_sort(a,j);
+    if(size>k)
+        quick_sort(a+k, size-k);
+}
+//**********************************************************************************
