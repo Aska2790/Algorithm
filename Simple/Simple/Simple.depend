@@ -1,0 +1,6 @@
+# depslib dependency file v1.0
+1513286605 source:i:\github\algorithm\simple\simple\main.c
+	<stdio.h>
+	<stdlib.h>
+	<locale.h>
+
