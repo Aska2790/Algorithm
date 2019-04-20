@@ -1,0 +1,194 @@
+
+#include <iostream>
+#include <bitset>
+#include <stddef.h>
+
+using namespace std;
+
+// структура пакета
+struct package
+{
+    uint8_t     receiver;                           // адрес получателя
+    uint8_t     sender;                             // адрес отправителя
+    uint8_t     dest;                               // функциональное назначение пакета
+    uint8_t     data_length[2];                     // длина пакета
+    uint8_t     *data;                              // данные
+    uint8_t    CRC32[4];                            // контрольная сумма
+};
+
+
+uint32_t Crc32Table[256];                           // таблица
+uint32_t polinom = 0x104C11DB7UL;                   // полином
+
+
+
+// прототипы функций
+uint32_t crc32_IEEE_802(const uint8_t *data,        // расчет контрольной суммы
+                        uint16_t len,
+                        uint32_t sum);
+bool     ProcessPack(package *income, package *outcome);    // обработка пакета
+uint16_t BitCounting(uint8_t * data, uint16_t len);         // подсчет количества единиц в байтах
+void getDataFromUser(uint8_t * data, uint8_t array_length); // получение данных
+void ShowPackage(package *pack);
+void fillTable(uint32_t polinom);
+
+
+
+
+int main()
+{
+    setlocale(LC_ALL, "rus");                               // локализация для кириллицы
+
+    fillTable(polinom);
+
+    uint8_t array_length = 10;                              // длина массива данных
+    uint8_t data[array_length];                             // массив данных
+
+    getDataFromUser(data, array_length);                    // получаем данные от пользователя
+
+    // количество байтов
+    uint16_t len = sizeof(data[0])*array_length;
+
+    package out;                                            // исходящий пакет
+    package in;                                             // формируем пакет
+
+    in.receiver = 0xff;
+    in.sender =0x0;
+    in.dest = 0xAA;
+    in.data = (uint8_t*)data;
+
+    in.data_length[0] = len& 0xFF;
+    in.data_length[1] = (len<<8)&0xFF;
+
+    uint32_t CRC32 = crc32_IEEE_802(in.data, len ,0xFFFFFFFFUL);
+    in.CRC32[0] = CRC32;
+    in.CRC32[1] = CRC32>>8;
+    in.CRC32[2] = CRC32>>16;
+    in.CRC32[3] = CRC32>>24;
+
+    if (!ProcessPack(&in, &out)){
+        cout << "Ошибка, не корректные данные пакета " << endl;
+        return 1;
+    }
+    else {
+        uint16_t temp = *(out.data+1)<<8|*out.data;
+        cout << "Количество единиц в данных = "  << endl
+             << "Двоичное представление "<< bitset<16>(temp) << endl
+             <<"Десятичное представление " <<  temp  <<  endl;
+                ShowPackage(&out);
+    }
+    return 0;
+}
+
+
+// =========================================================================
+// отображение пакета
+void ShowPackage(package *pack)
+{
+
+    cout << "Адрес отправителя : " << bitset<8>(pack->sender) << endl
+         << "Адрес получателя  : " << bitset<8>(pack->receiver) << endl
+         << "Код назначения    : " << bitset<8>(pack->dest) << endl
+         << "Размер данных     : " << (pack->data_length[1]<<8| pack->data_length[0]) << endl
+         << "CRC-32            : " <<  hex<< ((pack->CRC32[3] << 24) | (pack->CRC32[2] << 16 )|
+                                        (pack->CRC32[1] <<8)| (pack->CRC32[0])) << endl;
+}
+
+// =========================================================================
+// получение данных
+void getDataFromUser(uint8_t *data, uint8_t array_length)
+{
+    for(uint32_t i=0; i < array_length; i++)
+    {
+        data[i] = 0xFF;
+        // cout << "Enter the value " << endl;
+        // cin >> data[i];
+    }
+}
+
+
+// =========================================================================
+// Расчет контрольной суммы
+uint32_t crc32_IEEE_802(const uint8_t *data, uint16_t len, uint32_t sum)
+{
+    uint32_t crc32;
+    crc32 = sum;
+
+    while (len--) {
+        crc32 = (crc32 >> 8)^Crc32Table[(crc32 ^ *data++) & 0xFF] ;
+    }
+    return crc32 ;
+}
+
+// =========================================================================
+// обработка входного пакета и формирование нового выходного
+bool ProcessPack(package*income, package *outcome)
+{
+    uint16_t len = ((income->data_length[1]<<8)| (income->data_length[0]));
+
+    uint32_t check_crc = ((income->CRC32[3]<<24)|(income->CRC32[2]<<16)|
+                          (income->CRC32[1]<<8) |(income->CRC32[0]));
+
+    uint32_t crc = crc32_IEEE_802(income->data,len, 0xFFFFFFFFUL);
+
+    if(!((crc == check_crc) && (income->dest == 0xAA))){
+        return false;
+    }
+    else{
+        uint16_t length =2;
+        uint16_t bitCount;                                            // выделяем память для результата
+        bitCount = BitCounting(income->data, len);                    // количество единиц в данных
+
+        outcome->receiver = 0x0;
+        outcome->sender = 0xff;
+        outcome->dest = 0xAB;
+
+        outcome->data_length[0] = length&0xFF;
+        outcome->data_length[1] = (length>>8)&0xFF;
+
+
+        outcome->data = new uint8_t[length];
+        outcome->data[0] = (bitCount) & 0xFF;
+        outcome->data[1] = (bitCount >> 8) & 0xFF;
+
+        uint32_t temp = crc32_IEEE_802(outcome->data,
+                                        length,
+                                        0xFFFFFFFFUL);
+        outcome->CRC32[0] = temp;
+        outcome->CRC32[1] = temp >>8;
+        outcome->CRC32[2] = temp >>16;
+        outcome->CRC32[3] = temp >>24;
+        return true;
+    }
+}
+
+
+// =========================================================================
+// подсчет количества единиц в байтах
+uint16_t BitCounting(uint8_t * data, uint16_t len)
+{
+
+    uint16_t counter = 0;                               //  счетчик
+    for(uint16_t i=0; i < len; i++)                     //  проходим по всем данным
+    {
+        while(data[i])                                  //  берем отдельный байт
+        {
+            counter += data[i] & 1;                     //  считываем единицы
+            data[i] >>= 1;                              //  смещаем
+        }
+    }
+    return counter;
+}
+// =========================================================================
+// заполнение таблицы
+void fillTable(uint32_t polinom) {
+    uint32_t crc;
+
+    for (int i = 0; i < 256; i++) {
+        crc = i;
+        for (int j = 0; j < 8; j++){
+            crc = crc & 1 ? (crc >> 1) ^ polinom : crc >> 1;
+        }
+        Crc32Table[i] = crc;
+    };
+}
